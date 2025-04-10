@@ -16,6 +16,7 @@
 
 #include "TelemetryLogger.h"
 
+#include <mutex>
 #include <vector>
 
 #define DEFAULT_LOG_CHANNEL "TelemetryLogger"

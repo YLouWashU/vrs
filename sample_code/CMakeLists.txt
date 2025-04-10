@@ -21,4 +21,11 @@ target_link_libraries(sample_code_app
     vrslib
     vrs_logging
     vrs_os
+  PRIVATE
+    ocean
 )
+
+# Add an executable for OceanTest
+add_executable(OceanTest OceanTest.cpp)
+# Link the executable with the Ocean library
+target_link_libraries(OceanTest PRIVATE ocean)
