@@ -87,6 +87,7 @@ const unordered_map<RecordableTypeId, const char*>& getRecordableTypeIdRegistry(
       {RecordableTypeId::DistanceRecordableClass, "Distance Data Class"},
       {RecordableTypeId::ActiveMinutesRecordableClass, "Active Minutes Data Class"},
       {RecordableTypeId::HeadingRecordableClass, "Heading Data Class"},
+      {RecordableTypeId::AmbientLightRecordableClass, "Ambient Light Sensor (ALS) Data Class"},
 
       {RecordableTypeId::SlamImuData, "IMU Data (SLAM)"},
       {RecordableTypeId::SlamMagnetometerData, "Magnetometer Data (SLAM)"},
@@ -124,6 +125,7 @@ const unordered_map<RecordableTypeId, const char*>& getRecordableTypeIdRegistry(
       {RecordableTypeId::InstructionRecordableClass, "Instruction Data Class"},
       {RecordableTypeId::ScriptRecordableClass, "Script Data Class"},
       {RecordableTypeId::ControlRecordableClass, "Control Data Class"},
+      {RecordableTypeId::PipelineEventRecordableClass, "Pipeline Event Data Class"},
 
       /// << Ground Truth >>
       {RecordableTypeId::GroundTruthRecordableClass, "Ground Truth Data Class"},
@@ -147,6 +149,9 @@ const unordered_map<RecordableTypeId, const char*>& getRecordableTypeIdRegistry(
       {RecordableTypeId::AnchorRecordableClass, "Anchor Data Class"},
       {RecordableTypeId::SegmentationRecordableClass, "Segmentation Data Class"},
       {RecordableTypeId::TextRecordableClass, "Text Data Class"},
+      {RecordableTypeId::SpeechRecordableClass, "Speech Data Class"},
+      {RecordableTypeId::QuaternionRecordableClass, "Quaternion Data Class"},
+      {RecordableTypeId::UltrasonicRecordableClass, "Ultrasonic Data Class"},
 
       /// << Annotations >>
       {RecordableTypeId::AnnotationRecordableClass, "Annotation Data Class"},
@@ -212,6 +217,11 @@ bool StreamId::isKnownTypeId(RecordableTypeId typeId) {
 
 string StreamId::getName() const {
   return fmt::format("{} #{}", getTypeName(), static_cast<int>(instanceId_));
+}
+
+string StreamId::getFullName() const {
+  return fmt::format(
+      "{}-{} - {}", to_string(static_cast<int>(typeId_)), to_string(instanceId_), getTypeName());
 }
 
 string StreamId::getNumericName() const {

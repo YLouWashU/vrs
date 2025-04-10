@@ -28,23 +28,43 @@ using namespace std;
 
 namespace vrs {
 
-std::atomic<TelemetryLogger*>& TelemetryLogger::instance() {
+TelemetryLogger* TelemetryLogger::getDefaultLogger() {
   static TelemetryLogger sDefaultLogger;
-  static std::atomic<TelemetryLogger*> sInstance{&sDefaultLogger};
-  return sInstance;
+  return &sDefaultLogger;
 }
 
-void TelemetryLogger::setLogger(unique_ptr<TelemetryLogger>&& telemetryLogger) {
-  static vector<unique_ptr<TelemetryLogger>> sLoggers;
-  TelemetryLogger* oldInstance = getInstance();
-  instance() = telemetryLogger.get();
-  sLoggers.emplace_back(std::move(telemetryLogger));
-  oldInstance->stop();
+std::atomic<TelemetryLogger*>& TelemetryLogger::getCurrentLogger() {
+  static std::atomic<TelemetryLogger*> sCurrentLogger{getDefaultLogger()};
+  return sCurrentLogger;
+}
+
+void TelemetryLogger::setLogger(unique_ptr<TelemetryLogger> telemetryLogger) {
+  TelemetryLogger* previousLogger = nullptr;
+  {
+    static mutex sMutex;
+    lock_guard<mutex> lock(sMutex);
+    static vector<unique_ptr<TelemetryLogger>> sLoggers;
+    if (telemetryLogger) {
+      telemetryLogger->start();
+      previousLogger = getCurrentLogger().exchange(telemetryLogger.get());
+      sLoggers.push_back(std::move(telemetryLogger));
+    } else {
+      previousLogger = getCurrentLogger().exchange(getDefaultLogger());
+    }
+  }
+  previousLogger->stop();
 }
 
 void TelemetryLogger::logEvent(LogEvent&& event) {
   if (event.type == TelemetryLogger::kErrorType) {
     XR_LOGE(
+        "{}, {}: {}, {}",
+        event.operationContext.operation,
+        event.operationContext.sourceLocation,
+        event.message,
+        event.serverReply);
+  } else if (event.type == TelemetryLogger::kInfoType) {
+    XR_LOGI(
         "{}, {}: {}, {}",
         event.operationContext.operation,
         event.operationContext.sourceLocation,

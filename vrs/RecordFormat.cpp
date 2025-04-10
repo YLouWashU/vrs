@@ -219,25 +219,58 @@ string unescapeString(const char* str, size_t length) {
   return s;
 }
 
+string sanitizeCustomContentBlockFormatName(const string& name) {
+  string s;
+  s.reserve(name.size());
+  // be careful, and only allow alphanumeric and a few special characters
+  const char* kAllowedSpecialChars = "_-*.,;:!@~#&|[]{}'";
+  for (unsigned char c : name) {
+    s.push_back(isalnum(c) || strchr(kAllowedSpecialChars, c) != nullptr ? c : '_');
+  }
+  return s;
+}
+
+string_view kCustomContentBlockFormat = "format=";
+
 } // namespace
 
 namespace vrs {
 
+string toString(ContentType contentType) {
+  return ContentTypeFormatConverter::toString(contentType);
+}
+template <>
+ContentType toEnum<>(const string& name) {
+  return ContentTypeFormatConverter::toEnumNoCase(name.c_str());
+}
+
+string toString(ImageFormat imageFormat) {
+  return ImageFormatConverter::toString(imageFormat);
+}
 template <>
 ImageFormat toEnum<>(const string& name) {
   return ImageFormatConverter::toEnumNoCase(name.c_str());
 }
 
+string toString(PixelFormat pixelFormat) {
+  return PixelFormatConverter::toString(pixelFormat);
+}
 template <>
 PixelFormat toEnum<>(const string& name) {
   return PixelFormatConverter::toEnumNoCase(name.c_str());
 }
 
+string toString(AudioFormat audioFormat) {
+  return AudioFormatConverter::toString(audioFormat);
+}
 template <>
 AudioFormat toEnum<>(const string& name) {
   return AudioFormatConverter::toEnumNoCase(name.c_str());
 }
 
+string toString(AudioSampleFormat audioSampleFormat) {
+  return AudioSampleFormatConverter::toString((audioSampleFormat));
+}
 template <>
 AudioSampleFormat toEnum<>(const string& name) {
   return AudioSampleFormatConverter::toEnumNoCase(name.c_str());
@@ -798,8 +831,31 @@ size_t AudioContentBlockSpec::getPcmBlockSize() const {
   return ContentBlock::kSizeUnknown;
 }
 
+bool AudioContentBlockSpec::operator==(const AudioContentBlockSpec& rhs) const {
+  return audioFormat_ == rhs.audioFormat_ && sampleFormat_ == rhs.sampleFormat_ &&
+      channelCount_ == rhs.channelCount_ && getSampleFrameStride() == rhs.getSampleFrameStride() &&
+      sampleFrameCount_ == rhs.sampleFrameCount_ && sampleFrameRate_ == rhs.sampleFrameRate_;
+}
+
+bool AudioContentBlockSpec::isCompatibleWith(const AudioContentBlockSpec& rhs) const {
+  return sampleFormat_ == rhs.sampleFormat_ && channelCount_ == rhs.channelCount_ &&
+      getSampleFrameStride() == rhs.getSampleFrameStride() &&
+      sampleFrameRate_ == rhs.sampleFrameRate_;
+}
+
 string AudioContentBlockSpec::getSampleFormatAsString() const {
   return AudioSampleFormatConverter::toString(sampleFormat_);
+}
+
+bool AudioContentBlockSpec::isSampleBlockFormatDefined() const {
+  switch (audioFormat_) {
+    case AudioFormat::PCM:
+      return sampleFormat_ != AudioSampleFormat::UNDEFINED && channelCount_ != 0;
+    case AudioFormat::UNDEFINED:
+    case AudioFormat::COUNT:
+    default:
+      return false;
+  }
 }
 
 bool AudioContentBlockSpec::isLittleEndian(AudioSampleFormat sampleFormat) {
@@ -979,6 +1035,15 @@ ContentBlock::ContentBlock(const string& formatStr) {
       audioSpec_.set(parser);
       break;
     case ContentType::CUSTOM:
+      if (!parser.str.empty()) {
+        if (helpers::startsWith(parser.str, kCustomContentBlockFormat)) {
+          customContentBlockFormat_ = sanitizeCustomContentBlockFormatName(
+              parser.str.substr(kCustomContentBlockFormat.size()));
+        } else {
+          XR_LOGE("Invalid custom content block specification '{}'.", parser.str.c_str());
+        }
+      }
+      break;
     case ContentType::DATA_LAYOUT:
     case ContentType::EMPTY:
     default:
@@ -993,7 +1058,8 @@ string ContentBlock::asString() const {
   s.reserve(120);
   s.append(ContentTypeFormatConverter::toString(contentType_));
   if (size_ != kSizeUnknown) {
-    s.append("/size=").append(to_string(size_));
+    constexpr string_view size = "/size=";
+    s.append(size).append(to_string(size_));
   }
   string subtype;
   switch (contentType_) {
@@ -1002,6 +1068,12 @@ string ContentBlock::asString() const {
       break;
     case ContentType::AUDIO:
       subtype = audioSpec_.asString();
+      break;
+    case ContentType::CUSTOM:
+      if (!customContentBlockFormat_.empty()) {
+        subtype.reserve(kCustomContentBlockFormat.size() + customContentBlockFormat_.size());
+        subtype.append(kCustomContentBlockFormat).append(customContentBlockFormat_);
+      }
       break;
     default:
       break;
@@ -1033,6 +1105,23 @@ size_t ContentBlock::getBlockSize() const {
   return size;
 }
 
+bool ContentBlock::operator==(const ContentBlock& rhs) const {
+  // first compare generic content blocks
+  if (contentType_ != rhs.contentType_ || size_ != rhs.size_) {
+    return false;
+  }
+  // now specific parts for given format type
+  switch (contentType_) {
+    case ContentType::IMAGE:
+      return imageSpec_ == rhs.imageSpec_;
+    case ContentType::AUDIO:
+      return audioSpec_ == rhs.audioSpec_;
+    default:
+      // non-specific content type
+      return true;
+  }
+}
+
 RecordFormat ContentBlock::operator+(const ContentBlock& other) const {
   return {*this, other};
 }
@@ -1045,6 +1134,26 @@ const ImageContentBlockSpec& ContentBlock::image() const {
 const AudioContentBlockSpec& ContentBlock::audio() const {
   XR_VERIFY(contentType_ == ContentType::AUDIO);
   return audioSpec_;
+}
+
+CustomContentBlock::CustomContentBlock(const string& customContentBlockFormat, size_t size)
+    : ContentBlock(ContentType::CUSTOM, size) {
+  customContentBlockFormat_ = sanitizeCustomContentBlockFormatName(customContentBlockFormat);
+}
+
+CustomContentBlock::CustomContentBlock(size_t size) : ContentBlock(ContentType::CUSTOM, size) {}
+
+bool RecordFormat::operator==(const RecordFormat& rhs) const {
+  size_t usedBlocksCount = getUsedBlocksCount();
+  if (usedBlocksCount != rhs.getUsedBlocksCount()) {
+    return false;
+  }
+  for (size_t k = 0; k < usedBlocksCount; ++k) {
+    if (getContentBlock(k) != rhs.getContentBlock(k)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 void RecordFormat::set(const string& format) {
@@ -1100,6 +1209,14 @@ size_t RecordFormat::getBlocksOfTypeCount(ContentType type) const {
     }
   }
   return count;
+}
+
+const ContentBlock& RecordFormat::getContentBlock(size_t index) const {
+  if (index < blocks_.size()) {
+    return blocks_[index];
+  }
+  static ContentBlock sEmptyBlock;
+  return sEmptyBlock;
 }
 
 size_t RecordFormat::getBlockSize(size_t blockIndex, size_t remainingSize) const {
@@ -1255,26 +1372,6 @@ unique_ptr<DataLayout> RecordFormat::getDataLayout(
     return DataLayout::makeFromJson(iter->second);
   }
   return nullptr;
-}
-
-string toString(ContentType contentType) {
-  return ContentTypeFormatConverter::toString(contentType);
-}
-
-string toString(ImageFormat imageFormat) {
-  return ImageFormatConverter::toString(imageFormat);
-}
-
-string toString(PixelFormat pixelFormat) {
-  return PixelFormatConverter::toString(pixelFormat);
-}
-
-string toString(AudioFormat audioFormat) {
-  return AudioFormatConverter::toString(audioFormat);
-}
-
-string toString(AudioSampleFormat audioSampleFormat) {
-  return AudioSampleFormatConverter::toString((audioSampleFormat));
 }
 
 } // namespace vrs

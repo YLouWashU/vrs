@@ -23,6 +23,7 @@
 
 #include <vrs/helpers/Rapidjson.hpp>
 #include <vrs/helpers/Strings.h>
+#include <vrs/os/System.h>
 
 #include <vrs/ErrorCode.h>
 #include <vrs/IndexRecord.h>
@@ -81,16 +82,44 @@ void printTime(
   }
 }
 
-void printTags(ostream& out, const map<string, string>& tags) {
+void appendTruncated(string& line, const string& extra, Details details, size_t width) {
+  if (details & Details::CompleteTags) {
+    line.append(extra);
+  } else {
+    if (line.size() >= width) {
+      line.resize(width);
+    } else {
+      if (line.size() + extra.size() > width) {
+        line.append(extra.substr(0, width - line.size()));
+      } else {
+        line.append(extra);
+      }
+    }
+  }
+}
+
+void printTags(ostream& out, string_view prefix, const map<string, string>& tags, Details details) {
+  const size_t width = os::getTerminalWidth();
+  string line;
+  line.reserve(width * 2);
   for (const auto& iter : tags) {
-    out << "  Tag: " << iter.first << " = " << make_printable(iter.second);
+    line.clear();
+    line.append(prefix).append(iter.first).append(" = ");
+    appendTruncated(line, iter.second, details, width);
     if (iter.first == tag_conventions::kCaptureTimeEpoch) {
       time_t creationTimeSec = static_cast<time_t>(stoul(iter.second));
       if (creationTimeSec > 1000000) {
-        out << put_time(localtime(&creationTimeSec), " -- %c %Z");
+        stringstream ss;
+        ss << put_time(localtime(&creationTimeSec), " -- %c %Z");
+        appendTruncated(line, ss.str(), details, width);
       }
     }
-    out << "\n";
+    string printable = make_printable(line);
+    if (printable.size() > width - 3 && !(details & Details::CompleteTags)) {
+      out << printable.substr(0, width - 3) << "...\n";
+    } else {
+      out << printable << "\n";
+    }
   }
 }
 
@@ -119,8 +148,6 @@ struct RecordCounter {
     }
   }
 };
-
-const size_t kMaxVRSTagLineLength = 150;
 
 void overView(ostream& out, RecordFileReader& file, StreamId id, Details details) {
   const auto& index = file.getIndex(id);
@@ -158,17 +185,8 @@ void overView(ostream& out, RecordFileReader& file, StreamId id, Details details
   out << ".\n";
   if (details & Details::StreamTags) {
     const StreamTags& tags = file.getTags(id);
-    for (const auto& iter : tags.vrs) {
-      stringstream ss;
-      ss << "  VRS Tag: " << iter.first << " = " << iter.second;
-      string t = ss.str();
-      if (t.size() > kMaxVRSTagLineLength) {
-        out << make_printable(t.substr(0, kMaxVRSTagLineLength)) << "...\n";
-      } else {
-        out << make_printable(t) << "\n";
-      }
-    }
-    printTags(out, tags.user);
+    printTags(out, "  VRS Tag: ", tags.vrs, details);
+    printTags(out, "  Tag: ", tags.user, details);
   }
   if (details & Details::StreamRecordCounts) {
     RecordCounter configRecords, stateRecords, dataRecords;
@@ -281,7 +299,7 @@ void printOverview(
   }
   if (details & Details::ListFileTags) {
     const auto& tags = recordFile.getTags();
-    printTags(out, tags);
+    printTags(out, "  Tag: ", tags, details);
   }
   if (details & (Details::StreamNames | Details::StreamTags | Details::StreamRecordCounts)) {
     for (auto id : streamIds) {

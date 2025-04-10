@@ -112,6 +112,7 @@ enum class RecordableTypeId : uint16_t {
   DistanceRecordableClass = 257, ///< Distance data streams.
   ActiveMinutesRecordableClass = 258, ///< Active minutes data streams.
   HeadingRecordableClass = 259, ///< Heading data streams.
+  // << Discrete sensors continue below at 500 >>
 
   // << Calibration, Setup, Diagnostic, etc >>
   CalibrationRecordableClass = 260, ///< For calibration data streams.
@@ -146,6 +147,7 @@ enum class RecordableTypeId : uint16_t {
   InstructionRecordableClass = 322, ///< For instructions data streams.
   ScriptRecordableClass = 323, ///< For script data streams.
   ControlRecordableClass = 324, ///< For control data streams.
+  PipelineEventRecordableClass = 325, ///< For EMG pipeline events streams.
 
   // << Ground Truth >>
   GroundTruthRecordableClass = 340, ///< For ground truth data streams.
@@ -169,9 +171,15 @@ enum class RecordableTypeId : uint16_t {
   SegmentationRecordableClass = 380, ///< For segmentation data streams.
   TextRecordableClass = 381, ///< For result data streams stored as text.
   EMGGestureRecordableClass = 382, ///< For EMG gesture data streams.
+  SpeechRecordableClass = 383, ///< For speech/ASR data streams.
+  QuaternionRecordableClass = 384, ///< For quaternion data streams
+  UltrasonicRecordableClass = 385, ///< For ultrasonic data streams
 
   // << Annotations >>
   AnnotationRecordableClass = 400, ///< For annotation streams.
+
+  // << Discrete Sensors (continued) >>
+  AmbientLightRecordableClass = 500, ///< Ambient light data streams.
 
   // << Test, Samples and other fake devices >>
   SampleDeviceRecordableClass = 998, ///< For sample device streams.
@@ -273,15 +281,18 @@ class StreamId {
   }
 
   /// Get the name of the type of device.
-  /// @return English readable recordable name.
+  /// @return Descriptive recordable type name.
   string getTypeName() const {
     return toString(typeId_);
   }
   /// Get a readable name for the device, combining the recordable type name and the instance id.
   /// @return English readable recordable name, including the instance id.
   string getName() const;
+  /// Get a complete name for the device, combining the numeric name and recordable type name.
+  /// @return Numeric name and recordable type name.
+  string getFullName() const;
   /// Get a name combining the recordable type and the instance id, as numbers.
-  /// @return Recordable name, using numeric values.
+  /// @return Recordable type ID numeric value and instance ID.
   string getNumericName() const;
   /// Convert from a stream ID numeric string representation
   /// @param numericName: a stream ID name in numeric representation, e.g., "1100-1"

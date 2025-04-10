@@ -23,6 +23,7 @@ find_package(Boost REQUIRED
     date_time
     system
 )
+
 find_package(Threads REQUIRED)
 find_package(FmtLib REQUIRED)
 find_package(RapidjsonLib REQUIRED)
@@ -33,10 +34,9 @@ find_package(PNG REQUIRED)
 find_package(JPEG REQUIRED)
 find_package(TurboJpeg REQUIRED)
 
-# Set up requirements for XPRS decoding
-if (XPRS_DECODING)
-  include(${CMAKE_MODULE_PATH}/SetupOcean.cmake)
-endif()
+# Optional dependencies
+find_package(Opus)
+
 
 # Setup unit test infra, but only if unit tests are enabled
 if (UNIT_TESTS)

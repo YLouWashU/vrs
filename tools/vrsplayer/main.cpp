@@ -70,7 +70,7 @@ int main(int argc, char* argv[]) {
   ::arvr::logging::setGlobalLogLevel(arvr::logging::Level::Info);
 
   platformConfig();
-  QApplication app(argc, argv);
+  vrsp::VrsPlayerApplication app(argc, argv);
 
   QApplication::setStyle("Fusion");
 
@@ -85,10 +85,10 @@ int main(int argc, char* argv[]) {
   parser.setApplicationDescription("VRSplayer");
   parser.addHelpOption();
   parser.addVersionOption();
-  parser.addPositionalArgument("url", "https://about.facebook.com/realitylabs/");
+  parser.addPositionalArgument("url", "https://about.meta.com/realitylabs");
   parser.process(app);
 
   vrsp::PlayerWindow playerWindow(app);
 
-  return playerWindow.processCommandLine(parser);
+  return app.run(playerWindow.getPlayerUI(), parser);
 }

@@ -53,9 +53,11 @@ int remove(const std::string& path); // file or folder
 int rename(const std::string& originalName, const std::string& newName); // file or folder
 bool getLinkedTarget(const std::string& sourcePath, std::string& outLinkedPath);
 int hidePath(const std::string& path, bool hide = true); // only does something on Windows
+void shortenPath(std::string& path); // only does something on Windows, maybe...
 std::string sanitizeFileName(const std::string& filename);
 std::string randomName(int length);
-const std::string& getTempFolder();
+const std::string& getOsTempFolder(); // get the OS's temp (shared) folder
+const std::string& getTempFolder(); // get unique subfolder in the OS's temp folder
 std::string getUniquePath(const std::string& baseName, size_t randomSuffixLength = 5);
 std::string makeUniqueFolder(const std::string& baseName = {}, size_t randomSuffixLength = 10);
 

@@ -16,14 +16,26 @@
 
 #pragma once
 
-#include <string>
+#include <qapplication.h>
+#include <QtCore/QCommandLineParser>
 
-namespace vrs {
-namespace os {
+namespace vrsp {
 
-std::string getOsFingerPrint();
-std::string getUniqueSessionId();
-size_t getTerminalWidth();
+class PlayerUI;
 
-} // namespace os
-} // namespace vrs
+class VrsPlayerApplication : public QApplication {
+ public:
+  VrsPlayerApplication(int& argc, char** argv) : QApplication(argc, argv) {}
+
+  int run(PlayerUI& playerUI, QCommandLineParser& parser);
+  bool event(QEvent* event) override;
+
+  void openFirstFile();
+
+ private:
+  PlayerUI* playerUI_{};
+  QString firstFile_;
+  bool firstFileOpened_{false};
+};
+
+} // namespace vrsp

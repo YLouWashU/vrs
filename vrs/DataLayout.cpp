@@ -178,25 +178,30 @@ string DataLayout::asJson(JsonFormatProfile profile) const {
 string DataLayout::asJson(const JsonFormatProfileSpec& profile) const {
   using namespace vrs_rapidjson;
   JDocument doc;
-  JDocument::AllocatorType& alloc = doc.GetAllocator();
   doc.SetObject();
+  JsonWrapper jw(doc);
+  serialize(jw, profile);
+  return profile.prettyJson ? jDocumentToJsonStringPretty(doc) : jDocumentToJsonString(doc);
+}
+
+void DataLayout::serialize(JsonWrapper& jw, const JsonFormatProfileSpec& profile) const {
+  using namespace vrs_rapidjson;
   JValue jpieces(kArrayType);
-  jpieces.Reserve(static_cast<SizeType>(fixedSizePieces_.size() + varSizePieces_.size()), alloc);
+  jpieces.Reserve(static_cast<SizeType>(fixedSizePieces_.size() + varSizePieces_.size()), jw.alloc);
   for (const auto& piece : fixedSizePieces_) {
     JValue jpiece(kObjectType);
-    JsonWrapper rj{jpiece, alloc};
+    JsonWrapper rj{jpiece, jw.alloc};
     piece->serialize(rj, profile);
-    jpieces.PushBack(jpiece, alloc);
+    jpieces.PushBack(jpiece, rj.alloc);
   }
   for (const auto& piece : varSizePieces_) {
     JValue jpiece(kObjectType);
-    JsonWrapper rj{jpiece, alloc};
+    JsonWrapper rj{jpiece, jw.alloc};
     piece->serialize(rj, profile);
-    jpieces.PushBack(jpiece, alloc);
+    jpieces.PushBack(jpiece, rj.alloc);
   }
   const char* kFieldName = profile.publicNames ? "metadata" : "data_layout";
-  doc.AddMember(vrs_rapidjson::StringRef(kFieldName), jpieces, alloc);
-  return profile.prettyJson ? jDocumentToJsonStringPretty(doc) : jDocumentToJsonString(doc);
+  jw.value.AddMember(vrs_rapidjson::StringRef(kFieldName), jpieces, jw.alloc);
 }
 
 ContentBlock DataLayout::getContentBlock() const {
@@ -361,9 +366,14 @@ class DataLayouter {
   /// End the construction of a DataLayout.
   /// This is called by AutoDataLayoutEnd's constructor, and on demand by ManualDataLayout.
   void dataLayoutEnd() DISABLE_THREAD_SAFETY_ANALYSIS {
-    currentLayout_->initLayout();
+    XR_CHECK_NE(
+        currentLayout_,
+        nullptr,
+        "DataLayouter::dataLayoutEnd() called without prior matching call to DataLayouter::dataLayoutBegin().");
+    DataLayout* layout = currentLayout_;
     currentLayout_ = nullptr;
     mutex_.unlock();
+    layout->initLayout();
   }
   /// Start a sub-structure within a DataLayout, with its own "namespace".
   /// The DataPiece objects within that struct will have a label prepended with the namespace.
@@ -410,6 +420,8 @@ class DataLayouter {
   string prefix_;
 };
 
+namespace {
+
 const char* sDataTypeNames[] = {
     "undefined",
     "DataPieceValue",
@@ -429,6 +441,8 @@ struct DataPieceTypeStringConverter : public EnumStringConverter<
       cNamesCount == enumCount<DataPieceType>(),
       "Missing DataPieceType name definitions");
 };
+
+} // namespace
 
 static string makePieceName(const string& pieceTypeName, const string& dataType) {
   return pieceTypeName + '<' + dataType + '>'; // e.g., "value<double>"
@@ -1230,7 +1244,7 @@ size_t DataPieceVector<string>::getVariableSize() const {
 }
 
 template <>
-size_t DataPieceVector<string>::collectVariableData(int8_t* data, size_t bufferSize) const {
+size_t DataPieceVector<string>::collectVariableData(int8_t* data, size_t bufferSize) {
   size_t writtenSize = 0;
   if (storeElement<uint32_t>(
           data, static_cast<uint32_t>(stagedValues_.size()), writtenSize, bufferSize)) {
@@ -1425,7 +1439,7 @@ size_t DataPieceStringMap<T>::getVariableSize() const {
 }
 
 template <typename T>
-size_t DataPieceStringMap<T>::collectVariableData(int8_t* data, size_t bufferSize) const {
+size_t DataPieceStringMap<T>::collectVariableData(int8_t* data, size_t bufferSize) {
   size_t writtenSize = 0;
   for (const auto& iter : stagedValues_) {
     if (!storeElement<string>(data, iter.first, writtenSize, bufferSize) ||
@@ -1549,7 +1563,7 @@ const string& DataPieceString::getElementTypeName() const {
   return sName;
 }
 
-size_t DataPieceString::collectVariableData(int8_t* data, size_t bufferSize) const {
+size_t DataPieceString::collectVariableData(int8_t* data, size_t bufferSize) {
   const size_t writtenSize = min(bufferSize, getVariableSize());
   if (writtenSize > 0) {
     memcpy(data, stagedString_.data(), writtenSize);
