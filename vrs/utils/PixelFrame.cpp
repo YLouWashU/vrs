@@ -519,6 +519,7 @@ bool PixelFrame::normalizeFrame(
   // See if we can convert to something simple enough using Ocean
   PixelFormat targetPixelFormat =
       getNormalizedPixelFormat(imageSpec_.getPixelFormat(), grey16supported, options);
+
   if (imageSpec_.getPixelFormat() == targetPixelFormat) {
     return false;
   }
@@ -1059,6 +1060,12 @@ bool PixelFrame::normalizeToPixelFormat(
   // Try to create an Ocean-style source frame
   unique_ptr<Ocean::Frame> sourceFrame;
   switch (imageSpec_.getPixelFormat()) {
+    case vrs::PixelFormat::GREY8: {
+      const FrameType sourceFrameType(
+          width, height, FrameType::FORMAT_Y8, FrameType::ORIGIN_UPPER_LEFT);
+      sourceFrame = make_unique<Frame>(sourceFrameType, rdata(), Frame::CM_USE_KEEP_LAYOUT);
+      break;
+    } 
     case vrs::PixelFormat::YUV_I420_SPLIT: {
       const FrameType sourceFrameType(
           width, height, FrameType::FORMAT_Y_U_V12, FrameType::ORIGIN_UPPER_LEFT);

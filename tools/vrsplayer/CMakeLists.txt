@@ -32,6 +32,7 @@ if (QT_FOUND)
     PRIVATE
       vrslib
       vrs_utils
+      vrs_utils_xprs
       fmt::fmt
       vrs_logging
       PortAudio::PortAudio
