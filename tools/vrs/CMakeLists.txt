@@ -23,6 +23,7 @@ target_link_libraries(vrs
     vrslib
     vrs_utils
     vrs_utils_cli
+    vrs_utils_xprs
     fmt::fmt
     PNG::PNG
     JPEG::JPEG

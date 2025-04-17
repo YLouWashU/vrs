@@ -59,7 +59,7 @@ tar -xzf "$FFMPEG_VERSION.tar.gz"
 # Change to the FFmpeg source directory, configure, compile, and install
 cd "FFmpeg-$FFMPEG_VERSION"
 echo "Configuring FFmpeg..."
-./configure --prefix="$INSTALL_PATH" --disable-swresample --disable-swscale --disable-everything --enable-decoder=hevc
+./configure --prefix="$INSTALL_PATH" --disable-swresample --disable-swscale --disable-everything --enable-decoder=hevc --enable-zlib --enable-static --disable-shared
 echo "Compiling FFmpeg..."
 make -j$(nproc)
 if [ $? -ne 0 ]; then

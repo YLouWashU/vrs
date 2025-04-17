@@ -25,6 +25,10 @@
 #include <logging/Log.h>
 #include <logging/Verify.h>
 
+#include <ocean/base/Frame.h>
+#include <ocean/base/WorkerPool.h>
+#include <ocean/cv/FrameConverter.h>
+#include <ocean/cv/ImageQuality.h>
 #include <vrs/RecordFileReader.h>
 #include <vrs/TagConventions.h>
 #include <vrs/helpers/FileMacros.h>
@@ -204,6 +208,17 @@ set<uint16_t>& getusedObjectColors() {
   static set<uint16_t> sUsedObjectColors;
   return sUsedObjectColors;
 };
+
+static Ocean::FrameType::PixelFormat vrsToOceanPixelFormat(vrs::PixelFormat targetPixelFormat) {
+  switch (targetPixelFormat) {
+    case PixelFormat::GREY8:
+      return Ocean::FrameType::FORMAT_Y8;
+    case PixelFormat::GREY16:
+      return Ocean::FrameType::FORMAT_Y16;
+    default:
+      return Ocean::FrameType::FORMAT_RGB24;
+  }
+}
 
 } // namespace
 
@@ -1035,10 +1050,53 @@ PixelFrame::getStreamNormalizeOptions(RecordFileReader& reader, StreamId id, Pix
 #if IS_VRS_OSS_CODE()
 
 bool PixelFrame::normalizeToPixelFormat(
-    PixelFrame& convertedFrame,
+    PixelFrame& outNormalizedFrame,
     PixelFormat targetPixelFormat,
     const NormalizeOptions& options) const {
-  return false;
+      using namespace Ocean;
+  const uint32_t width = imageSpec_.getWidth();
+  const uint32_t height = imageSpec_.getHeight();
+  // Try to create an Ocean-style source frame
+  unique_ptr<Ocean::Frame> sourceFrame;
+  switch (imageSpec_.getPixelFormat()) {
+    case vrs::PixelFormat::YUV_I420_SPLIT: {
+      const FrameType sourceFrameType(
+          width, height, FrameType::FORMAT_Y_U_V12, FrameType::ORIGIN_UPPER_LEFT);
+      const uint8_t* baseAddressYPlane = rdata();
+      const uint8_t* baseAddressUPlane =
+          baseAddressYPlane + imageSpec_.getPlaneStride(0) * imageSpec_.getPlaneHeight(0);
+      const uint8_t* baseAddressVPlane =
+          baseAddressUPlane + imageSpec_.getPlaneStride(1) * imageSpec_.getPlaneHeight(1);
+      Frame::PlaneInitializers<uint8_t> planeInitializers = {
+          {baseAddressYPlane,
+           Frame::CM_USE_KEEP_LAYOUT,
+           imageSpec_.getPlaneStride(0) - imageSpec_.getDefaultStride()},
+          {baseAddressUPlane,
+           Frame::CM_USE_KEEP_LAYOUT,
+           imageSpec_.getPlaneStride(1) - imageSpec_.getDefaultStride2()},
+          {baseAddressVPlane,
+           Frame::CM_USE_KEEP_LAYOUT,
+           imageSpec_.getPlaneStride(2) - imageSpec_.getDefaultStride2()},
+      };
+      sourceFrame = make_unique<Frame>(sourceFrameType, planeInitializers);
+    } break;
+    default: {
+      fmt::print("Ocean implementation for pixel format normalization from {} to {} not implemented\n", toString(getPixelFormat()), toString(targetPixelFormat));
+      return false;
+    }
+  }
+  // Create an Ocean-style target frame
+  outNormalizedFrame.init(targetPixelFormat, width, height);
+  const FrameType targetFrameType(
+      width, height, vrsToOceanPixelFormat(targetPixelFormat), FrameType::ORIGIN_UPPER_LEFT);
+  Frame targetFrame(targetFrameType, outNormalizedFrame.wdata(), Frame::CM_USE_KEEP_LAYOUT);
+  return CV::FrameConverter::Comfort::convert(
+      *sourceFrame,
+      targetFrameType.pixelFormat(),
+      targetFrameType.pixelOrigin(),
+      targetFrame,
+      CV::FrameConverter::CP_ALWAYS_COPY,
+      width * height >= 640 * 480 ? Ocean::WorkerPool::get().scopedWorker()() : nullptr);
 }
 
 bool PixelFrame::msssimCompare(const PixelFrame& other, double& msssim) {

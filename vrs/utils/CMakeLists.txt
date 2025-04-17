@@ -15,6 +15,8 @@
 add_subdirectory(converters)
 add_subdirectory(xxhash)
 add_subdirectory(cli)
+add_subdirectory(xprs_decoder)
+
 
 file (GLOB VRS_UTILS_SRCS *.cpp *.h *.hpp)
 # Remove fb-only source files (if there is still any lying around)
@@ -35,6 +37,7 @@ target_link_libraries(vrs_utils
     TurboJpeg::TurboJpeg
     rapidjson::rapidjson
     vrs_logging
+    ocean
 )
 
 if (BUILD_WITH_OPUS)

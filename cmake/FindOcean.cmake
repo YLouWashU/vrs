@@ -34,9 +34,6 @@ endif()
 # Set the include directories
 set(Ocean_INCLUDE_DIRS
     "${Ocean_ROOT}/${Ocean_PLATFORM}/include"
-#    "${Ocean_ROOT}/${Ocean_PLATFORM}/include/ocean/base"
-#    "${Ocean_ROOT}/${Ocean_PLATFORM}/include/ocean/cv"
-#    "${Ocean_ROOT}/${Ocean_PLATFORM}/include/ocean/math"
 )
 
 # Create imported targets for each static library
