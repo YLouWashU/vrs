@@ -15,7 +15,6 @@
 add_subdirectory(converters)
 add_subdirectory(xxhash)
 add_subdirectory(cli)
-add_subdirectory(xprs_decoder)
 
 
 file (GLOB VRS_UTILS_SRCS *.cpp *.h *.hpp)
@@ -37,12 +36,17 @@ target_link_libraries(vrs_utils
     TurboJpeg::TurboJpeg
     rapidjson::rapidjson
     vrs_logging
-    ocean
 )
 
 if (BUILD_WITH_OPUS)
   target_link_libraries(vrs_utils PRIVATE Opus::opus)
   target_compile_definitions(vrs_utils PRIVATE OPUS_IS_AVAILABLE)
+endif()
+
+if (BUILD_WITH_XPRS)
+  add_subdirectory(xprs_decoder)
+  target_link_libraries(vrs_utils PRIVATE ocean)
+  target_compile_definitions(vrs_utils PUBLIC INCLUDE_XPRS)
 endif()
 
 target_include_directories(vrs_utils

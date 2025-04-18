@@ -21,32 +21,4 @@ target_link_libraries(sample_code_app
     vrslib
     vrs_logging
     vrs_os
-  PRIVATE
-    ocean
-    ffmpeg_decoding
 )
-
-# Specify the installation path for FFmpeg
-set(FFmpeg_ROOT "$ENV{HOME}/vrs_third_party_libs/ffmpeg")
-
-# Set the include directories
-set(FFmpeg_INCLUDE_DIRS
-    "${FFmpeg_ROOT}/include"
-)
-
-#add_library(ffmpeg_avutil_2 STATIC IMPORTED)
-#set_target_properties(ffmpeg_avutil_2 PROPERTIES
-#    IMPORTED_LOCATION "${FFmpeg_ROOT}/lib/libavutil.a"
-#)
-
-find_path(AVUTIL_INCLUDE_DIR libavutil/avutil.h)
-find_library(AVUTIL_LIBRARY avutil)
-
-# Add an executable for OceanTest
-add_executable(OceanTest OceanTest.cpp)
-target_link_libraries(OceanTest PRIVATE ocean)
-
-# Add an executable for FFmpegTest
-add_executable(FFmpegTest FFmpegTest.cpp)
-target_link_libraries(FFmpegTest PRIVATE ffmpeg_decoding)
-# target_include_directories(FFmpegTest PRIVATE ${AVUTIL_INCLUDE_DIR})

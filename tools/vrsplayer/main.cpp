@@ -35,8 +35,10 @@ Q_IMPORT_PLUGIN(QWindowsIntegrationPlugin)
 
 #include "PlayerWindow.h"
 
-#include <vrs/utils/DecoderFactory.h>
-#include <vrs/utils/xprs_decoder/XprsDecoder.h>
+#ifdef INCLUDE_XPRS
+  #include <vrs/utils/DecoderFactory.h>
+  #include <vrs/utils/xprs_decoder/XprsDecoder.h>
+#endif
 
 using namespace std;
 
@@ -93,7 +95,9 @@ int main(int argc, char* argv[]) {
 
   vrsp::PlayerWindow playerWindow(app);
 
-  vrs::utils::DecoderFactory::get().registerDecoderMaker(vrs::vxprs::xprsDecoderMaker);
+  #ifdef INCLUDE_XPRS
+    vrs::utils::DecoderFactory::get().registerDecoderMaker(vrs::vxprs::xprsDecoderMaker);
+  #endif
 
   return app.run(playerWindow.getPlayerUI(), parser);
 }

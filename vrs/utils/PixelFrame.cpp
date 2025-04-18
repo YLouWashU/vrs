@@ -25,10 +25,13 @@
 #include <logging/Log.h>
 #include <logging/Verify.h>
 
-#include <ocean/base/Frame.h>
-#include <ocean/base/WorkerPool.h>
-#include <ocean/cv/FrameConverter.h>
-#include <ocean/cv/ImageQuality.h>
+#ifdef INCLUDE_XPRS
+  #include <ocean/base/Frame.h>
+  #include <ocean/base/WorkerPool.h>
+  #include <ocean/cv/FrameConverter.h>
+  #include <ocean/cv/ImageQuality.h>
+#endif
+
 #include <vrs/RecordFileReader.h>
 #include <vrs/TagConventions.h>
 #include <vrs/helpers/FileMacros.h>
@@ -209,6 +212,7 @@ set<uint16_t>& getusedObjectColors() {
   return sUsedObjectColors;
 };
 
+#ifdef INCLUDE_XPRS
 static Ocean::FrameType::PixelFormat vrsToOceanPixelFormat(vrs::PixelFormat targetPixelFormat) {
   switch (targetPixelFormat) {
     case PixelFormat::GREY8:
@@ -219,6 +223,7 @@ static Ocean::FrameType::PixelFormat vrsToOceanPixelFormat(vrs::PixelFormat targ
       return Ocean::FrameType::FORMAT_RGB24;
   }
 }
+#endif
 
 } // namespace
 
@@ -1054,7 +1059,8 @@ bool PixelFrame::normalizeToPixelFormat(
     PixelFrame& outNormalizedFrame,
     PixelFormat targetPixelFormat,
     const NormalizeOptions& options) const {
-      using namespace Ocean;
+#ifdef INCLUDE_XPRS
+  using namespace Ocean;
   const uint32_t width = imageSpec_.getWidth();
   const uint32_t height = imageSpec_.getHeight();
   // Try to create an Ocean-style source frame
@@ -1104,6 +1110,9 @@ bool PixelFrame::normalizeToPixelFormat(
       targetFrame,
       CV::FrameConverter::CP_ALWAYS_COPY,
       width * height >= 640 * 480 ? Ocean::WorkerPool::get().scopedWorker()() : nullptr);
+  #else
+    return false;
+  #endif
 }
 
 bool PixelFrame::msssimCompare(const PixelFrame& other, double& msssim) {

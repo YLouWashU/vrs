@@ -70,6 +70,7 @@ add_subdirectory(vrs)
 
 OPTION(BUILD_TOOLS "Build all of the tools" ON)
 OPTION(BUILD_SAMPLES "Build sample code and sample apps" ON)
+OPTION(BUILD_WITH_XPRS "Build with XPRS decoding library" OFF)
 
 if (BUILD_TOOLS)
   # Add the vrs command line utility

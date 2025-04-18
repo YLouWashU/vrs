@@ -16,7 +16,10 @@
 
 #include "VrsCommand.h"
 
-#include "SharedInit.hpp"
+#ifdef INCLUDE_XPRS
+#include <vrs/utils/DecoderFactory.h>
+#include <vrs/utils/xprs_decoder/XprsDecoder.h>
+#endif
 
 #include <vrs/os/Utils.h>
 
@@ -24,8 +27,10 @@ using namespace std;
 using namespace vrscli;
 
 int main(int argc, char** argv) {
-  // Initialize
-  vrstool::SharedInit();
+  // Initialize with XPRS if included
+  #ifdef INCLUDE_XPRS
+    vrs::utils::DecoderFactory::get().registerDecoderMaker(vrs::vxprs::xprsDecoderMaker);
+  #endif
 
   const string& appName = vrs::os::getFilename(argv[0]);
   if (argc == 1) {
